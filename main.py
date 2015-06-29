@@ -6,9 +6,10 @@ import glob
 import imghdr
 import random
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.CRITICAL,
                     format='%(asctime)s %(name)-6s %(levelname)-2s %(message)s'
                    )
+
 
 def load_images(needed_bits):
     usable_images = {}
@@ -32,9 +33,54 @@ def load_images(needed_bits):
 
     return usable_images
 
+
+def read_pixels(image):
+
+    def frombits(bits):
+        chars = []
+        for b in range(len(bits) / 8):
+            byte = bits[b*8:(b+1)*8]
+            chars.append(chr(int(''.join([str(bit) for bit in byte]), 2)))
+        return ''.join(chars)
+
+    im_open = Image.open(image)
+    im = im_open.load()
+    max_x, max_y = im_open.size
+
+    bits = ""
+    crc = 0x00
+    length = 0x00
+
+    for x in xrange(0, max_x):
+        for y in xrange(0, max_y):
+            r, g, b = im[x, y]
+            r_lsb = r & 1
+            g_lsb = g & 1
+            b_lsb = b & 1
+            bits += str(r_lsb) + str(g_lsb) + str(b_lsb)
+            if not crc and not length and len(bits) == (9 * 16):
+                partial_bytes = bytes(frombits(bits))
+                crc = int(partial_bytes[0:8], 16)
+                length = int(partial_bytes[8:16], 16)
+
+            if length and len(bits) >= (length) * 10 + (16 * 9):
+                print length, bits
+                print frombits(bits)
+                break
+        else:
+            continue
+        break
+
+    bytes_from_bits = bytes(frombits(bits))
+    payload = bytes_from_bits[16:length + 16]
+
+    if crc == binascii.crc32(payload) & 0xFFFFFFFF:
+        print "Extracted successfully."
+
+
 def modify_pixels(image, data):
 
-    def set_bit(color, last_bit):
+    def calculate_lsb(color, last_bit):
         last_bit_on = color & 1
         if last_bit_on and last_bit == '0':
             color = color & ~1 #replace LSB with zero
@@ -56,19 +102,24 @@ def modify_pixels(image, data):
                 logging.debug("Bits to write to this pixel: " + bits)
 
                 r, g, b = im[x, y]
+
                 if len(bits) >= 1:
-                    set_bit(r, bits[0])
+                    new_r = calculate_lsb(r, bits[0])
                 if len(bits) >= 2:
-                    set_bit(g, bits[1])
+                    new_g = calculate_lsb(g, bits[1])
                 if len(bits) >= 3:
-                    set_bit(b, bits[2])
+                    new_b = calculate_lsb(b, bits[2])
+
+
+                im[x, y] = (new_r, new_g, new_b)
             else:
                 break
-
-
+    return im_open
 
 if __name__ == "__main__":
-    msg = "This is a secret"
+
+
+    msg = "This is a secret" * 00001000
     msg_hash = "{:08x}".format(binascii.crc32(msg) & 0xFFFFFFFF)
 
     if len(msg) > 2 ** 16 - 1:
@@ -89,6 +140,11 @@ if __name__ == "__main__":
 
     for image in images_to_encode:
         if images_to_encode[image] > required_pixels:
-            modify_pixels(image, bits)
+            im = modify_pixels(image, bits)
+            im.save("new.png", optimize=True)
         else:
             pass
+
+
+    print read_pixels("new.png")
+    sys.exit(-1)
