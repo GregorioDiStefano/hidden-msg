@@ -5,10 +5,13 @@ from PIL import Image
 import glob
 import imghdr
 import random
+import operator
+
 
 logging.basicConfig(level=logging.CRITICAL,
                     format='%(asctime)s %(name)-6s %(levelname)-2s %(message)s'
                    )
+
 
 
 def load_images(needed_bits):
@@ -34,7 +37,7 @@ def load_images(needed_bits):
     return usable_images
 
 
-def read_pixels(image):
+def read_pixels(image, only_meta=False):
 
     def frombits(bits):
         chars = []
@@ -60,15 +63,13 @@ def read_pixels(image):
             g_lsb = g & 1
             b_lsb = b & 1
             bits += str(r_lsb) + str(g_lsb) + str(b_lsb)
-            if not crc and not length and len(bits) == (9 * 16):
+            if not crc and not length and len(bits) >= (9 * 16):
                 partial_bytes = bytes(frombits(bits))
-
                 part = int(partial_bytes[0], 16)
                 length = int(partial_bytes[1:9], 16)
-                crc = (partial_bytes[10:17], 16)
-
-            if length and len(bits) >= (length) * 10 + (16 * 9):
-                break
+                crc = int(partial_bytes[10:17], 16)
+            if crc and len(bits) >= (length) * 10 + (16 * 9):
+                    break
         else:
             continue
         break
@@ -78,6 +79,10 @@ def read_pixels(image):
 
     if crc == binascii.crc32(payload) & 0xFFFFFFFF:
         print "Extracted successfully."
+
+    if only_meta:
+        return part, length, crc
+
     return payload, length, crc
 
 def modify_pixels(image, data):
@@ -122,12 +127,28 @@ def bytes_to_bits(data):
     bits = ''.join(format(ord(i),'b').zfill(8) for i in data)
     return bits
 
+def find_encoded_images(dir):
+        files = {}
+        for encoded_image in glob.glob("encoded/*"):
+                part, length, crc = read_pixels(encoded_image, only_meta=True)
+                if not files.get(crc, False):
+                    files[crc] = []
+                files[crc].append({"file" : encoded_image, "part" : part, "length" : length})
+        return files
+
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        data0, length0, crc0 = read_pixels("new_0.png")
-        data1, length0, crc0 = read_pixels("new_1.png")
-        total_data = (data0 + data1)[0:length0]
-        print total_data,
+    if len(sys.argv) == 2 and sys.argv[1] == "read":
+        encoded_files = find_encoded_images("encoded/*")
+
+        data = ""
+        length = ""
+        for key in encoded_files.keys():
+            sorted_by_part = sorted(encoded_files[key], key=lambda k: k['part'])
+            length = encoded_files[key][0]["length"]
+            for f in sorted_by_part:
+                payload, _, _ = read_pixels(f["file"])
+                data += payload
+            print data[0:length]
         sys.exit(-1)
 
 
@@ -137,10 +158,6 @@ if __name__ == "__main__":
     msg_hash = "{:08x}".format(binascii.crc32(msg) & 0xFFFFFFFF)
     msg_length = "{:08x}".format(len(msg))
     part = "{:01x}".format(0)
-
-
-
-
 
     total_payload = part + msg_length + msg_hash + msg
 
@@ -166,12 +183,10 @@ if __name__ == "__main__":
         if pixels_in_image < required_pixels:
             bits = bits[last_written_bit:pixels_in_image * 3]
             last_written_bit = (pixels_in_image * 3)
-            #print bits[-200:], "....."
         elif last_written_bit > 0:
             bits = bits[0:(17*8)] + bits[last_written_bit:]
-            #print bits[0:200], "..."
 
         im = modify_pixels(image, bits)
         print "Saving image..."
-        im.save("new_" + str(count) + ".png", lossless=True)
+        im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
         required_pixels -= images_to_encode[image]
