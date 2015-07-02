@@ -15,7 +15,7 @@ def load_images(needed_bits):
     usable_images = {}
     images = glob.glob("images/*")
 
-    random.shuffle(images)
+    #random.shuffle(images)
 
     for image in images:
         if imghdr.what(image):
@@ -44,8 +44,6 @@ def read_pixels(image):
         return ''.join(chars)
 
 
-
-
     im_open = Image.open(image)
     im = im_open.load()
     max_x, max_y = im_open.size
@@ -64,9 +62,11 @@ def read_pixels(image):
             bits += str(r_lsb) + str(g_lsb) + str(b_lsb)
             if not crc and not length and len(bits) == (9 * 16):
                 partial_bytes = bytes(frombits(bits))
+
                 part = int(partial_bytes[0], 16)
                 length = int(partial_bytes[1:9], 16)
-                crc = int(partial_bytes[9:17], 16)
+                crc = (partial_bytes[10:17], 16)
+
             if length and len(bits) >= (length) * 10 + (16 * 9):
                 break
         else:
@@ -74,11 +74,11 @@ def read_pixels(image):
         break
 
     bytes_from_bits = bytes(frombits(bits))
-    payload = bytes_from_bits[16:length + 16]
-    print payload
+    payload = bytes_from_bits[17:length + 16]
+
     if crc == binascii.crc32(payload) & 0xFFFFFFFF:
         print "Extracted successfully."
-
+    return payload, length, crc
 
 def modify_pixels(image, data):
 
@@ -123,17 +123,24 @@ def bytes_to_bits(data):
     return bits
 
 if __name__ == "__main__":
-
-    print read_pixels("new_0.png")
-    sys.exit(-1)
+    if len(sys.argv) == 2:
+        data0, length0, crc0 = read_pixels("new_0.png")
+        data1, length0, crc0 = read_pixels("new_1.png")
+        total_data = (data0 + data1)[0:length0]
+        print total_data,
+        sys.exit(-1)
 
 
     with open ("data.txt", "r") as myfile:
         msg=myfile.read()
-    print len(msg)
+
     msg_hash = "{:08x}".format(binascii.crc32(msg) & 0xFFFFFFFF)
     msg_length = "{:08x}".format(len(msg))
     part = "{:01x}".format(0)
+
+
+
+
 
     total_payload = part + msg_length + msg_hash + msg
 
@@ -161,7 +168,7 @@ if __name__ == "__main__":
             last_written_bit = (pixels_in_image * 3)
             #print bits[-200:], "....."
         elif last_written_bit > 0:
-            bits = bits[0:(16*8)] + bits[last_written_bit:]
+            bits = bits[0:(17*8)] + bits[last_written_bit:]
             #print bits[0:200], "..."
 
         im = modify_pixels(image, bits)
