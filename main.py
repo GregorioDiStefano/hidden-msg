@@ -9,9 +9,23 @@ import zlib
 
 logging.basicConfig(level=logging.CRITICAL,
                     format='%(asctime)s %(name)-6s %(levelname)-2s %(message)s'
-                   )
+                    )
 
 
+class Utils(object):
+
+    @staticmethod
+    def frombits(bits):
+        chars = []
+        for b in range(len(bits) / 8):
+            byte = bits[b*8:(b+1)*8]
+            chars.append(chr(int(''.join([str(bit) for bit in byte]), 2)))
+        return ''.join(chars)
+
+    @staticmethod
+    def bytes_to_bits(data):
+        bits = ''.join(format(ord(i), 'b').zfill(8) for i in data)
+        return bits
 
 def load_images():
     usable_images = {}
@@ -28,15 +42,6 @@ def load_images():
 
 
 def read_pixels(image, only_meta=False):
-
-    def frombits(bits):
-        chars = []
-        for b in range(len(bits) / 8):
-            byte = bits[b*8:(b+1)*8]
-            chars.append(chr(int(''.join([str(bit) for bit in byte]), 2)))
-        return ''.join(chars)
-
-
     im_open = Image.open(image)
     im = im_open.load()
     max_x, max_y = im_open.size
@@ -54,7 +59,7 @@ def read_pixels(image, only_meta=False):
             b_lsb = b & 1
             bits += str(r_lsb) + str(g_lsb) + str(b_lsb)
             if not crc and not length and len(bits) >= (9 * 16):
-                partial_bytes = bytes(frombits(bits))
+                partial_bytes = bytes(Utils.frombits(bits))
                 part = int(partial_bytes[0], 16)
                 length = int(partial_bytes[1:9], 16)
                 crc = int(partial_bytes[9:17], 16)
@@ -64,7 +69,7 @@ def read_pixels(image, only_meta=False):
             continue
         break
 
-    bytes_from_bits = bytes(frombits(bits))
+    bytes_from_bits = bytes(Utils.frombits(bits))
     payload = bytes_from_bits[17:length + 16]
 
     if only_meta:
@@ -82,6 +87,11 @@ def modify_pixels(image, data):
             color = color | 0x01 #set last bit on
         return color
 
+    if not len(data):
+        return
+
+    data = [data[i:i+3] for i in range(0, len(data), 3)]
+
     im_open = Image.open(image)
     im = im_open.load()
 
@@ -89,39 +99,27 @@ def modify_pixels(image, data):
 
     for x in xrange(0, max_x):
         for y in xrange(0, max_y):
-            if len(data):
+
+            try:
                 bits = data.pop(0)
-            else:
-                break
+                if len(bits):
+                    logging.debug("Bits to write to this pixel: " + bits)
 
-            if len(bits):
-                logging.debug("Bits to write to this pixel: " + bits)
+                    r, g, b = im[x, y]
 
-                r, g, b = im[x, y]
-
-                if len(bits) >= 1:
-                    r = calculate_lsb(r, bits[0])
-                if len(bits) >= 2:
-                    g = calculate_lsb(g, bits[1])
-                if len(bits) >= 3:
-                    b = calculate_lsb(b, bits[2])
-                im[x, y] = (r, g, b)
-            else:
+                    if len(bits) >= 1:
+                        r = calculate_lsb(r, bits[0])
+                    if len(bits) >= 2:
+                        g = calculate_lsb(g, bits[1])
+                    if len(bits) >= 3:
+                        b = calculate_lsb(b, bits[2])
+                    im[x, y] = (r, g, b)
+            except IndexError:
                 break
 
     data_left = data
     return data_left, im_open
 
-def frombits(bits):
-    chars = []
-    for b in range(len(bits) / 8):
-        byte = bits[b*8:(b+1)*8]
-        chars.append(chr(int(''.join([str(bit) for bit in byte]), 2)))
-    return ''.join(chars)
-
-def bytes_to_bits(data):
-    bits = ''.join(format(ord(i),'b').zfill(8) for i in data)
-    return bits
 
 def find_encoded_images(dir):
         files = {}
@@ -135,8 +133,8 @@ def find_encoded_images(dir):
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "read":
         encoded_files = find_encoded_images("encoded/*")
+
         data = ""
-        length = ""
 
         for key in encoded_files.keys():
             sorted_by_part = sorted(encoded_files[key], key=lambda k: k['part'])
@@ -145,8 +143,7 @@ if __name__ == "__main__":
                 payload, _, _ = read_pixels(f["file"])
                 data += payload
         if hex(binascii.crc32(data[0:length]) & 0xFFFFFFFF) == hex(key):
-            print zlib.decompress(data[0:length])
-
+            sys.stdout.write(zlib.decompress(data[0:length]))
         sys.exit(-1)
 
 
@@ -154,14 +151,11 @@ if __name__ == "__main__":
         msg=zlib.compress(myfile.read())
 
     msg_hash = "{:08x}".format(binascii.crc32(msg) & 0xFFFFFFFF)
-    print msg_hash
     msg_length = "{:08x}".format(len(msg) + 1)
     part = "{:01x}".format(0)
 
     total_payload = part + msg_length + msg_hash + msg
-
-    total_bits = bytes_to_bits(total_payload)
-    required_pixels = int((len(total_bits) / 3))
+    total_bits = Utils.bytes_to_bits(total_payload)
 
     if len(msg) > 2 ** 32 - 1:
         logging.critical("Huge payload. Try with a smaller filesize!")
@@ -169,22 +163,19 @@ if __name__ == "__main__":
 
     logging.debug("Payload: " + total_payload)
     logging.debug("Bits to be written: " + total_bits)
-    logging.debug("Pixels required: " + str(required_pixels))
 
     images_to_encode = load_images()
 
-    data_left = -1
-
-    bits = bytes_to_bits("{:01x}".format(0)) + total_bits[8:]
-    bits_in_3 = [bits[i:i+3] for i in range(0, len(bits), 3)]
-    print "Done"
     for count, image in enumerate(images_to_encode):
         if count == 0:
-            data_left, im = modify_pixels(image, bits_in_3)
+            bits = Utils.bytes_to_bits("{:01x}".format(0)) + total_bits[8:]
+            data_left, im = modify_pixels(image, bits)
 
         elif data_left:
-            data_left = bytes_to_bits("{:01x}".format(count + 1)) + total_bits[8:(17*8)] + data_left
-            print "Data left: ", frombits(data_left)
+            data_left = ''.join(data_left)
+            data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) \
+                        + total_bits[8:(17*8)] \
+                        + data_left
             data_left , im = modify_pixels(image, data_left)
 
         im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
