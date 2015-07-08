@@ -27,6 +27,16 @@ class Utils(object):
         bits = ''.join(format(ord(i), 'b').zfill(8) for i in data)
         return bits
 
+    @staticmethod
+    def calculate_lsb(color, last_bit):
+        last_bit_on = color & 1
+        if last_bit_on and last_bit == 0:
+            color = color & ~1
+        elif not last_bit_on and last_bit == 1:
+            color = color | 0x01
+        return color
+
+
 def load_images():
     usable_images = {}
     images = glob.glob("images/*")
@@ -100,21 +110,19 @@ def modify_pixels(image, data):
     for x in xrange(0, max_x):
         for y in xrange(0, max_y):
 
-            try:
-                bits = data.pop(0)
-                if len(bits):
-                    logging.debug("Bits to write to this pixel: " + bits)
+            if len(bits):
+                logging.debug("Bits to write to this pixel: " + bits)
 
-                    r, g, b = im[x, y]
+                r, g, b = im[x, y]
 
-                    if len(bits) >= 1:
-                        r = calculate_lsb(r, bits[0])
-                    if len(bits) >= 2:
-                        g = calculate_lsb(g, bits[1])
-                    if len(bits) >= 3:
-                        b = calculate_lsb(b, bits[2])
-                    im[x, y] = (r, g, b)
-            except IndexError:
+                if len(bits) >= 1:
+                    r = Utils.calculate_lsb(r, int(bits[0]))
+                if len(bits) >= 2:
+                    g = Utils.calculate_lsb(g, int(bits[1]))
+                if len(bits) >= 3:
+                    b = Utils.calculate_lsb(b, int(bits[2]))
+                im[x, y] = (r, g, b)
+            else:
                 break
 
     data_left = data
@@ -142,6 +150,10 @@ if __name__ == "__main__":
             for f in sorted_by_part:
                 payload, _, _ = read_pixels(f["file"])
                 data += payload
+
+
+        #print sorted_by_part
+
         if hex(binascii.crc32(data[0:length]) & 0xFFFFFFFF) == hex(key):
             sys.stdout.write(zlib.decompress(data[0:length]))
         sys.exit(-1)
@@ -149,9 +161,10 @@ if __name__ == "__main__":
 
     with open ("data.txt", "r") as myfile:
         msg=zlib.compress(myfile.read())
-
+    #print repr(msg)
     msg_hash = "{:08x}".format(binascii.crc32(msg) & 0xFFFFFFFF)
-    msg_length = "{:08x}".format(len(msg) + 1)
+    #print msg_hash
+    msg_length = "{:08x}".format(len(msg))
     part = "{:01x}".format(0)
 
     total_payload = part + msg_length + msg_hash + msg
@@ -172,10 +185,9 @@ if __name__ == "__main__":
             data_left, im = modify_pixels(image, bits)
 
         elif data_left:
-            data_left = ''.join(data_left)
-            data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) \
-                        + total_bits[8:(17*8)] \
-                        + data_left
+            data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) + total_bits[8:(17*8)] + data_left
+            #print "Data left: ", Utils.frombits(data_left)
+
             data_left , im = modify_pixels(image, data_left)
 
         im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
