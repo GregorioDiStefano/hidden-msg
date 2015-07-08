@@ -29,9 +29,9 @@ class Utils(object):
     @staticmethod
     def calculate_lsb(color, last_bit):
         last_bit_on = color & 1
-        if last_bit_on and last_bit == '0':
+        if last_bit_on and last_bit == 0:
             color = color & ~1
-        elif not last_bit_on and last_bit == '1':
+        elif not last_bit_on and last_bit == 1:
             color = color | 0x01
         return color
 
@@ -108,11 +108,11 @@ def modify_pixels(image, data):
                 r, g, b = im[x, y]
 
                 if len(bits) >= 1:
-                    r = Utils.calculate_lsb(r, bits[0])
+                    r = Utils.calculate_lsb(r, int(bits[0]))
                 if len(bits) >= 2:
-                    g = Utils.calculate_lsb(g, bits[1])
+                    g = Utils.calculate_lsb(g, int(bits[1]))
                 if len(bits) >= 3:
-                    b = Utils.calculate_lsb(b, bits[2])
+                    b = Utils.calculate_lsb(b, int(bits[2]))
                 im[x, y] = (r, g, b)
             else:
                 break
@@ -143,7 +143,7 @@ if __name__ == "__main__":
             for f in sorted_by_part:
                 payload, _, _ = read_pixels(f["file"])
                 data += payload
-        print sorted_by_part
+        #print sorted_by_part
         if hex(binascii.crc32(data[0:length]) & 0xFFFFFFFF) == hex(key):
             sys.stdout.write(zlib.decompress(data[0:length]))
         else:
@@ -153,9 +153,9 @@ if __name__ == "__main__":
 
     with open ("data.txt", "r") as myfile:
         msg=zlib.compress(myfile.read())
-    print repr(msg)
+    #print repr(msg)
     msg_hash = "{:08x}".format(binascii.crc32(msg) & 0xFFFFFFFF)
-    print msg_hash
+    #print msg_hash
     msg_length = "{:08x}".format(len(msg))
     part = "{:01x}".format(0)
 
@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
         elif data_left:
             data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) + total_bits[8:(17*8)] + data_left
-            print "Data left: ", Utils.frombits(data_left)
+            #print "Data left: ", Utils.frombits(data_left)
             data_left , im = modify_pixels(image, data_left)
 
         im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
