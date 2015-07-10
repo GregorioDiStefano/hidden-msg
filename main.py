@@ -35,69 +35,81 @@ class Utils(object):
             color = color | 0x01
         return color
 
-def load_images():
-    usable_images = {}
-    images = glob.glob("images/*")
-
-    random.shuffle(images)
-
-    for image in images:
-        if imghdr.what(image):
-            width, height = Image.open(image).size
-            usable_images[image] = width * height
-
-    return usable_images
-
-
-def read_pixels(image, only_meta=False):
-
-    im_open = Image.open(image)
-    im = im_open.load()
-    max_x, max_y = im_open.size
-
-    bits = ""
-    crc = 0x00
-    length = 0x00
-    part = 0x00
-
-    for x in xrange(0, max_x):
-        for y in xrange(0, max_y):
-            r, g, b = im[x, y]
-            r_lsb = r & 1
-            g_lsb = g & 1
-            b_lsb = b & 1
-            bits += str(r_lsb) + str(g_lsb) + str(b_lsb)
-            if not crc and not length and len(bits) >= (9 * 16):
-                partial_bytes = bytes(Utils.frombits(bits))
-                part = int(partial_bytes[0], 16)
-                length = int(partial_bytes[1:9], 16)
-                crc = int(partial_bytes[9:17], 16)
-            if crc and len(bits) >= (length) * 10 + (16 * 9):
-                    break
-        else:
-            continue
-        break
-
-    bytes_from_bits = bytes(Utils.frombits(bits))
-    payload = bytes_from_bits[17:length + 16]
-
-    if only_meta:
-        return part, length, crc
-
-    return payload, length, crc
-
 
 class Decode():
+
+    images_to_decode = []
+
+    def __init__(self, images_to_decode = None):
+        self.images_to_decode = images_to_decode or self.find_encoded_images("images/*")
+
+
     def find_encoded_images(self, dir):
             files = {}
             for encoded_image in glob.glob("encoded/*"):
-                    part, length, crc = read_pixels(encoded_image, only_meta=True)
+                    part, length, crc = self.read_pixels(encoded_image, only_meta=True)
                     if not files.get(crc, False):
                         files[crc] = []
                     files[crc].append({"file" : encoded_image, "part" : part, "length" : length})
             return files
 
 
+    def read_pixels(self, image, only_meta=False):
+        im_open = Image.open(image)
+        im = im_open.load()
+        max_x, max_y = im_open.size
+
+        bits = ""
+        crc = 0x00
+        length = 0x00
+        part = 0x00
+
+        for x in xrange(0, max_x):
+            for y in xrange(0, max_y):
+                if len(im[x, y]) == 3:
+                    r, g, b = im[x, y]
+                else:
+                    r, g, b, _ = im[x, y]
+                r_lsb = r & 1
+                g_lsb = g & 1
+                b_lsb = b & 1
+                bits += str(r_lsb) + str(g_lsb) + str(b_lsb)
+                if not crc and not length and len(bits) >= (9 * 16):
+                    partial_bytes = bytes(Utils.frombits(bits))
+                    part = int(partial_bytes[0], 16)
+                    length = int(partial_bytes[1:9], 16)
+                    crc = int(partial_bytes[9:17], 16)
+                if crc and len(bits) > (length) * 10 + (16 * 9):
+                        break
+            else:
+                continue
+            break
+
+        bytes_from_bits = bytes(Utils.frombits(bits))
+        payload = bytes_from_bits[17:length + 16 + 8]
+
+        if only_meta:
+            return part, length, crc
+
+        return payload, length, crc
+
+    def get_data(self):
+
+        data = ""
+        length = ""
+
+        for key in self.images_to_decode.keys():
+            sorted_by_part = sorted(self.images_to_decode[key], key=lambda k: k['part'])
+            length = self.images_to_decode[key][0]["length"]
+            for f in sorted_by_part:
+                payload, _, _ = self.read_pixels(f["file"])
+                data += payload
+        data = (data[0:length])
+        if hex(binascii.crc32(data) & 0xFFFFFFFF) == hex(key):
+            return data
+        else:
+            print "Failed!"
+            sys.stdout.write("Data:" + repr(data))
 
 class Encode():
 
@@ -106,13 +118,27 @@ class Encode():
     msg_hash = ""
     msg_length = 0
     total_payload = ""
+    images_to_encode = []
 
-    def __init__(self, f):
-        self.data_file = f
+    def __init__(self, data_file, images_to_encode=None):
+        self.data_file = data_file
+        self.images_to_encode =  images_to_encode or self.load_images()
+
+    def load_images(self):
+        usable_images = {}
+        images = glob.glob("images/*")
+
+        random.shuffle(images)
+
+        for image in images:
+            if imghdr.what(image):
+                width, height = Image.open(image).size
+                usable_images[image] = width * height
+
+        return usable_images
 
 
     def modify_pixels(self, image, data):
-
         im_open = Image.open(image)
         im = im_open.load()
 
@@ -120,6 +146,7 @@ class Encode():
 
         for x in xrange(0, max_x):
             for y in xrange(0, max_y):
+
                 if len(data):
                     bits = data[0:3]
                     data = data[3:]
@@ -129,7 +156,10 @@ class Encode():
                 if len(bits):
                     logging.debug("Bits to write to this pixel: " + bits)
 
-                    r, g, b = im[x, y]
+                    if len(im[x,y]) == 3:
+                        r, g, b = im[x, y]
+                    else:
+                        r, g, b, _ = im[x, y]
 
                     if len(bits) >= 1:
                         r = Utils.calculate_lsb(r, int(bits[0]))
@@ -148,7 +178,7 @@ class Encode():
     def encode(self):
 
         with open (self.data_file, "r") as myfile:
-            self.msg=zlib.compress(myfile.read())
+            self.msg=(myfile.read())
 
         self.msg_hash = "{:08x}".format(binascii.crc32(self.msg) & 0xFFFFFFFF)
         self.msg_length = "{:08x}".format(len(self.msg))
@@ -158,7 +188,6 @@ class Encode():
 
         self.total_bits = Utils.bytes_to_bits(self.total_payload)
 
-
         if len(self.msg) > 2 ** 32 - 1:
             logging.critical("Huge payload. Try with a smaller filesize!")
             sys.exit(-1)
@@ -166,18 +195,15 @@ class Encode():
         logging.debug("Payload: " + self.total_payload)
         logging.debug("Bits to be written: " + self.total_bits)
 
-
-        images_to_encode = load_images()
+        images_to_encode = self.images_to_encode
 
         bits = Utils.bytes_to_bits("{:01x}".format(0)) + self.total_bits[8:]
-
         for count, image in enumerate(images_to_encode):
             if count == 0:
                 data_left, im = self.modify_pixels(image, bits)
 
             elif data_left:
                 data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) + self.total_bits[8:(17*8)] + data_left
-                #print "Data left: ", Utils.frombits(data_left)
                 data_left , im = self.modify_pixels(image, data_left)
 
             im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
@@ -191,21 +217,10 @@ class Encode():
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "read":
-        encoded_files = find_encoded_images("encoded/*")
-        data = ""
-        length = ""
+        decode = Decode()
+        decode.get_data()
 
-        for key in encoded_files.keys():
-            sorted_by_part = sorted(encoded_files[key], key=lambda k: k['part'])
-            length = encoded_files[key][0]["length"]
-            for f in sorted_by_part:
-                payload, _, _ = read_pixels(f["file"])
-                data += payload
-        #print sorted_by_part
-        if hex(binascii.crc32(data[0:length]) & 0xFFFFFFFF) == hex(key):
-            sys.stdout.write(zlib.decompress(data[0:length]))
-        else:
-            sys.stdout.write(zlib.decompress(data[0:length]))
+
         sys.exit(-1)
     else:
         a = Encode("data.txt")
