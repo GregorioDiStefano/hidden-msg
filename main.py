@@ -86,50 +86,108 @@ def read_pixels(image, only_meta=False):
 
     return payload, length, crc
 
-def modify_pixels(image, data):
+
+class Decode():
+    def find_encoded_images(self, dir):
+            files = {}
+            for encoded_image in glob.glob("encoded/*"):
+                    part, length, crc = read_pixels(encoded_image, only_meta=True)
+                    if not files.get(crc, False):
+                        files[crc] = []
+                    files[crc].append({"file" : encoded_image, "part" : part, "length" : length})
+            return files
 
 
-    im_open = Image.open(image)
-    im = im_open.load()
 
-    max_x, max_y = im_open.size
+class Encode():
 
-    for x in xrange(0, max_x):
-        for y in xrange(0, max_y):
-            if len(data):
-                bits = data[0:3]
-                data = data[3:]
-            else:
+    data_file = ""
+    msg = ""
+    msg_hash = ""
+    msg_length = 0
+    total_payload = ""
+
+    def __init__(self, f):
+        self.data_file = f
+
+
+    def modify_pixels(self, image, data):
+
+        im_open = Image.open(image)
+        im = im_open.load()
+
+        max_x, max_y = im_open.size
+
+        for x in xrange(0, max_x):
+            for y in xrange(0, max_y):
+                if len(data):
+                    bits = data[0:3]
+                    data = data[3:]
+                else:
+                    break
+
+                if len(bits):
+                    logging.debug("Bits to write to this pixel: " + bits)
+
+                    r, g, b = im[x, y]
+
+                    if len(bits) >= 1:
+                        r = Utils.calculate_lsb(r, int(bits[0]))
+                    if len(bits) >= 2:
+                        g = Utils.calculate_lsb(g, int(bits[1]))
+                    if len(bits) >= 3:
+                        b = Utils.calculate_lsb(b, int(bits[2]))
+                    im[x, y] = (r, g, b)
+                else:
+                    break
+
+        data_left = data
+        return data_left, im_open
+
+
+    def encode(self):
+
+        with open (self.data_file, "r") as myfile:
+            self.msg=zlib.compress(myfile.read())
+
+        self.msg_hash = "{:08x}".format(binascii.crc32(self.msg) & 0xFFFFFFFF)
+        self.msg_length = "{:08x}".format(len(self.msg))
+        self.part = "{:01x}".format(0)
+
+        self.total_payload = self.part + self.msg_length + self.msg_hash + self.msg
+
+        self.total_bits = Utils.bytes_to_bits(self.total_payload)
+
+
+        if len(self.msg) > 2 ** 32 - 1:
+            logging.critical("Huge payload. Try with a smaller filesize!")
+            sys.exit(-1)
+
+        logging.debug("Payload: " + self.total_payload)
+        logging.debug("Bits to be written: " + self.total_bits)
+
+
+        images_to_encode = load_images()
+
+        bits = Utils.bytes_to_bits("{:01x}".format(0)) + self.total_bits[8:]
+
+        for count, image in enumerate(images_to_encode):
+            if count == 0:
+                data_left, im = self.modify_pixels(image, bits)
+
+            elif data_left:
+                data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) + self.total_bits[8:(17*8)] + data_left
+                #print "Data left: ", Utils.frombits(data_left)
+                data_left , im = self.modify_pixels(image, data_left)
+
+            im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
+
+            if not data_left:
                 break
 
-            if len(bits):
-                logging.debug("Bits to write to this pixel: " + bits)
+        if data_left:
+            print "Oppps, not enough images!"
 
-                r, g, b = im[x, y]
-
-                if len(bits) >= 1:
-                    r = Utils.calculate_lsb(r, int(bits[0]))
-                if len(bits) >= 2:
-                    g = Utils.calculate_lsb(g, int(bits[1]))
-                if len(bits) >= 3:
-                    b = Utils.calculate_lsb(b, int(bits[2]))
-                im[x, y] = (r, g, b)
-            else:
-                break
-
-    data_left = data
-    return data_left, im_open
-
-
-
-def find_encoded_images(dir):
-        files = {}
-        for encoded_image in glob.glob("encoded/*"):
-                part, length, crc = read_pixels(encoded_image, only_meta=True)
-                if not files.get(crc, False):
-                    files[crc] = []
-                files[crc].append({"file" : encoded_image, "part" : part, "length" : length})
-        return files
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "read":
@@ -149,46 +207,7 @@ if __name__ == "__main__":
         else:
             sys.stdout.write(zlib.decompress(data[0:length]))
         sys.exit(-1)
+    else:
+        a = Encode("data.txt")
+        a.encode()
 
-
-    with open ("data.txt", "r") as myfile:
-        msg=zlib.compress(myfile.read())
-    #print repr(msg)
-    msg_hash = "{:08x}".format(binascii.crc32(msg) & 0xFFFFFFFF)
-    #print msg_hash
-    msg_length = "{:08x}".format(len(msg))
-    part = "{:01x}".format(0)
-
-    total_payload = part + msg_length + msg_hash + msg
-
-    total_bits = Utils.bytes_to_bits(total_payload)
-    required_pixels = int((len(total_bits) / 3))
-
-    if len(msg) > 2 ** 32 - 1:
-        logging.critical("Huge payload. Try with a smaller filesize!")
-        sys.exit(-1)
-
-    logging.debug("Payload: " + total_payload)
-    logging.debug("Bits to be written: " + total_bits)
-    logging.debug("Pixels required: " + str(required_pixels))
-
-    images_to_encode = load_images()
-
-    bits = Utils.bytes_to_bits("{:01x}".format(0)) + total_bits[8:]
-
-    for count, image in enumerate(images_to_encode):
-        if count == 0:
-            data_left, im = modify_pixels(image, bits)
-
-        elif data_left:
-            data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) + total_bits[8:(17*8)] + data_left
-            #print "Data left: ", Utils.frombits(data_left)
-            data_left , im = modify_pixels(image, data_left)
-
-        im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
-
-        if not data_left:
-            break
-
-    if data_left:
-        print "Oppps, not enough images!"
