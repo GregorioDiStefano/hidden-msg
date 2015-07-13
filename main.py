@@ -43,7 +43,6 @@ class Decode():
     def __init__(self, images_to_decode = None):
         self.images_to_decode = images_to_decode or self.find_encoded_images("images/*")
 
-
     def find_encoded_images(self, dir):
             files = {}
             for encoded_image in glob.glob("encoded/*"):
@@ -52,7 +51,6 @@ class Decode():
                         files[crc] = []
                     files[crc].append({"file" : encoded_image, "part" : part, "length" : length})
             return files
-
 
     def read_pixels(self, image, only_meta=False):
         im_open = Image.open(image)
@@ -174,7 +172,6 @@ class Encode():
         data_left = data
         return data_left, im_open
 
-
     def encode(self):
 
         with open (self.data_file, "r") as myfile:
@@ -214,15 +211,11 @@ class Encode():
         if data_left:
             print "Oppps, not enough images!"
 
-
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "read":
         decode = Decode()
         decode.get_data()
-
-
         sys.exit(-1)
     else:
         a = Encode("data.txt")
         a.encode()
-

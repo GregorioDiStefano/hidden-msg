@@ -20,7 +20,6 @@ class MyTests(unittest.TestCase):
     def setUp(self):
         pass
 
-
     def test_lsb_1(self):
         self.assertEqual(0xFF, main.Utils.calculate_lsb(0xFE, 1))
 
@@ -51,6 +50,62 @@ class MyTests(unittest.TestCase):
 
     def test_encode_decode_3(self):
         file_to_encode = "test/test-data-3.txt"
+        data_to_encode =  Helpers.file_to_data(file_to_encode)
+
+        encode_images = ["test-images/test2/huge.png"]
+        e = main.Encode(file_to_encode, encode_images)
+        e.encode()
+        d = main.Decode()
+        self.assertEqual(d.get_data(), data_to_encode)
+        Helpers.cleanup()
+
+    def test_encode_decode_4_single_byte(self):
+        file_to_encode = "test/test-data-4.txt"
+        data_to_encode =  Helpers.file_to_data(file_to_encode)
+
+        encode_images = ["test-images/test2/huge.png"]
+        e = main.Encode(file_to_encode, encode_images)
+        e.encode()
+        d = main.Decode()
+        self.assertEqual(d.get_data(), data_to_encode)
+        Helpers.cleanup()
+
+    def test_encode_decode_4_single_byte_small_image(self):
+        file_to_encode = "test/test-data-4.txt"
+        data_to_encode =  Helpers.file_to_data(file_to_encode)
+
+        encode_images = ["test-images/test2/64.png"]
+        e = main.Encode(file_to_encode, encode_images)
+        e.encode()
+        d = main.Decode()
+        self.assertEqual(d.get_data(), data_to_encode)
+        Helpers.cleanup()
+
+    def test_encode_decode_4_single_byte_huge_image(self):
+        file_to_encode = "test/test-data-4.txt"
+        data_to_encode =  Helpers.file_to_data(file_to_encode)
+
+        encode_images = ["test-images/test2/huge.png"]
+        e = main.Encode(file_to_encode, encode_images)
+        e.encode()
+        d = main.Decode()
+        self.assertEqual(d.get_data(), data_to_encode)
+        Helpers.cleanup()
+
+    def test_encode_decode_5_huge_zeros(self):
+        file_to_encode = "test/200kb_zero.txt"
+        data_to_encode =  Helpers.file_to_data(file_to_encode)
+
+        encode_images = ["test-images/test2/huge.png"]
+        e = main.Encode(file_to_encode, encode_images)
+        e.encode()
+        d = main.Decode()
+        self.assertEqual(d.get_data(), data_to_encode)
+        Helpers.cleanup()
+
+
+    def test_encode_decode_6_huge_random(self):
+        file_to_encode = "test/200kb.txt"
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/huge.png"]
