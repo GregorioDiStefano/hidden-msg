@@ -105,10 +105,10 @@ class MyTests(unittest.TestCase):
 
 
     def test_encode_decode_6_huge_random(self):
-        file_to_encode = "test/200kb.txt"
+        file_to_encode = "test/1mb"
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
-        encode_images = ["test-images/test2/huge.png"]
+        encode_images = ["test-images/test6/1.jpg", "test-images/test6/2.jpg", "test-images/test6/3.jpg"]
         e = main.Encode(file_to_encode, encode_images)
         e.encode()
         d = main.Decode()

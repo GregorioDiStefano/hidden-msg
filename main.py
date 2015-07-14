@@ -57,7 +57,6 @@ class Decode():
             return files
 
     def read_pixels(self, image, only_meta=False):
-        print self.images_to_decode
         im_open = Image.open(image)
         im = im_open.load()
         max_x, max_y = im_open.size
