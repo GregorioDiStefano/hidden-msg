@@ -35,6 +35,10 @@ class Utils(object):
             color = color | 0x01
         return color
 
+    @staticmethod
+    def list_of_3(s):
+        n = 3
+        return [s[i:i+n] for i in range(0, len(s), n)]
 
 class Decode():
 
@@ -53,6 +57,7 @@ class Decode():
             return files
 
     def read_pixels(self, image, only_meta=False):
+        print self.images_to_decode
         im_open = Image.open(image)
         im = im_open.load()
         max_x, max_y = im_open.size
@@ -92,7 +97,6 @@ class Decode():
         return payload, length, crc
 
     def get_data(self):
-
         data = ""
         length = ""
 
@@ -141,13 +145,14 @@ class Encode():
         im = im_open.load()
 
         max_x, max_y = im_open.size
+        data = Utils.list_of_3(data)
+        iteration = 0
 
         for x in xrange(0, max_x):
             for y in xrange(0, max_y):
 
-                if len(data):
-                    bits = data[0:3]
-                    data = data[3:]
+                if 0 <= iteration < len(data):
+                    bits = data[iteration]
                 else:
                     break
 
@@ -166,10 +171,11 @@ class Encode():
                     if len(bits) >= 3:
                         b = Utils.calculate_lsb(b, int(bits[2]))
                     im[x, y] = (r, g, b)
+                    iteration += 1
                 else:
                     break
 
-        data_left = data
+        data_left = "".join(data[iteration:])
         return data_left, im_open
 
     def encode(self):
@@ -214,7 +220,7 @@ class Encode():
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "read":
         decode = Decode()
-        decode.get_data()
+        print decode.get_data()
         sys.exit(-1)
     else:
         a = Encode("data.txt")
