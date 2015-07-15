@@ -138,6 +138,12 @@ class Encode():
 
         return usable_images
 
+    def random_bits(self):
+        bits = ""
+        for i in range(3):
+            bits += str(random.randint(0, 1))
+        return bits
+
 
     def modify_pixels(self, image, data):
         im_open = Image.open(image)
@@ -145,6 +151,7 @@ class Encode():
 
         max_x, max_y = im_open.size
         data = Utils.list_of_3(data)
+
         iteration = 0
 
         for x in xrange(0, max_x):
@@ -153,26 +160,22 @@ class Encode():
                 if 0 <= iteration < len(data):
                     bits = data[iteration]
                 else:
-                    break
+                    bits = self.random_bits()
 
-                if len(bits):
-                    logging.debug("Bits to write to this pixel: " + bits)
-
-                    if len(im[x,y]) == 3:
-                        r, g, b = im[x, y]
-                    else:
-                        r, g, b, _ = im[x, y]
-
-                    if len(bits) >= 1:
-                        r = Utils.calculate_lsb(r, int(bits[0]))
-                    if len(bits) >= 2:
-                        g = Utils.calculate_lsb(g, int(bits[1]))
-                    if len(bits) >= 3:
-                        b = Utils.calculate_lsb(b, int(bits[2]))
-                    im[x, y] = (r, g, b)
-                    iteration += 1
+                if len(im[x,y]) == 3:
+                    r, g, b = im[x, y]
                 else:
-                    break
+                    r, g, b, _ = im[x, y]
+
+                if len(bits) >= 1:
+                    r = Utils.calculate_lsb(r, int(bits[0]))
+                if len(bits) >= 2:
+                    g = Utils.calculate_lsb(g, int(bits[1]))
+                if len(bits) >= 3:
+                    b = Utils.calculate_lsb(b, int(bits[2]))
+                im[x, y] = (r, g, b)
+                iteration += 1
+
 
         data_left = "".join(data[iteration:])
         return data_left, im_open
@@ -214,7 +217,7 @@ class Encode():
                 break
 
         if data_left:
-            print "Oppps, not enough images!"
+            logging.critical("oppps, not enough images!")
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "read":
