@@ -153,7 +153,7 @@ class Encode():
                 if 0 <= iteration < len(data):
                     bits = data[iteration]
                 else:
-                    bits = data[random.randint(0, len(data) - 1)]
+                    bits = random.choice(["000", "001", "010", "011", "100", "101", "111", "110"])
 
                 if len(im[x,y]) == 3:
                     r, g, b = im[x, y]
@@ -168,7 +168,6 @@ class Encode():
                     b = Utils.calculate_lsb(b, int(bits[2]))
                 im[x, y] = (r, g, b)
                 iteration += 1
-
 
         data_left = "".join(data[iteration:])
         return data_left, im_open
@@ -202,7 +201,7 @@ class Encode():
 
             elif data_left:
                 data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) + self.total_bits[8:(17*8)] + data_left
-                data_left , im = self.modify_pixels(image, data_left)
+                data_left, im = self.modify_pixels(image, data_left)
 
             im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
 
