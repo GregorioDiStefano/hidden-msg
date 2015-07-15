@@ -82,7 +82,7 @@ class Decode():
                     length = int(partial_bytes[1:9], 16)
                     crc = int(partial_bytes[9:17], 16)
                 if crc and len(bits) > (length) * 10 + (16 * 9):
-                        break
+                    break
             else:
                 continue
             break
@@ -109,8 +109,7 @@ class Decode():
         if hex(binascii.crc32(data) & 0xFFFFFFFF) == hex(key):
             return data
         else:
-            print "Failed!"
-            sys.stdout.write("Data:" + repr(data))
+            sys.stdout.write("Fail, data:" + repr(data))
 
 class Encode():
 
@@ -138,12 +137,6 @@ class Encode():
 
         return usable_images
 
-    def random_bits(self):
-        bits = ""
-        for i in range(3):
-            bits += str(random.randint(0, 1))
-        return bits
-
 
     def modify_pixels(self, image, data):
         im_open = Image.open(image)
@@ -160,7 +153,7 @@ class Encode():
                 if 0 <= iteration < len(data):
                     bits = data[iteration]
                 else:
-                    bits = self.random_bits()
+                    bits = data[random.randint(0, len(data) - 1)]
 
                 if len(im[x,y]) == 3:
                     r, g, b = im[x, y]
@@ -212,9 +205,6 @@ class Encode():
                 data_left , im = self.modify_pixels(image, data_left)
 
             im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
-
-            if not data_left:
-                break
 
         if data_left:
             logging.critical("oppps, not enough images!")
