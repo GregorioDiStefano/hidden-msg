@@ -115,5 +115,15 @@ class MyTests(unittest.TestCase):
         self.assertEqual(d.get_data(), data_to_encode)
         Helpers.cleanup()
 
+    def test_encode_decode_7_specfic_dir(self):
+        file_to_encode = "test/test-data-1.txt"
+        data_to_encode =  Helpers.file_to_data(file_to_encode)
+
+        encode_images = ["test-images/test6/1.jpg", "test-images/test6/2.jpg", "test-images/test6/3.jpg"]
+        e = main.Encode(file_to_encode, encode_images, output_dir = "test-dir-1/")
+        e.encode()
+        d = main.Decode(images_dir="test-dir-1/")
+        self.assertEqual(d.get_data(), data_to_encode)
+        Helpers.cleanup()
 if __name__ == '__main__':
     unittest.main()

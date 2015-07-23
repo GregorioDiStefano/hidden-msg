@@ -5,11 +5,12 @@ from PIL import Image
 import glob
 import imghdr
 import random
-import zlib
+import os
 
 logging.basicConfig(level=logging.CRITICAL,
                     format='%(asctime)s %(name)-6s %(levelname)-2s %(message)s'
                    )
+
 
 class Utils(object):
 
@@ -40,20 +41,25 @@ class Utils(object):
         n = 3
         return [s[i:i+n] for i in range(0, len(s), n)]
 
+
 class Decode():
 
     images_to_decode = []
+    images_dir = ""
 
-    def __init__(self, images_to_decode = None):
-        self.images_to_decode = images_to_decode or self.find_encoded_images("images/*")
+    def __init__(self, images_to_decode=None, images_dir=None):
+        if images_dir:
+            self.images_to_decode = self.find_encoded_images(images_dir + "*")
+        else:
+            self.images_to_decode = images_to_decode or self.find_encoded_images("encoded/*")
 
     def find_encoded_images(self, dir):
             files = {}
-            for encoded_image in glob.glob("encoded/*"):
+            for encoded_image in glob.glob(dir):
                     part, length, crc = self.read_pixels(encoded_image, only_meta=True)
                     if not files.get(crc, False):
                         files[crc] = []
-                    files[crc].append({"file" : encoded_image, "part" : part, "length" : length})
+                    files[crc].append({"file": encoded_image, "part": part, "length": length})
             return files
 
     def read_pixels(self, image, only_meta=False):
@@ -111,6 +117,7 @@ class Decode():
         else:
             sys.stdout.write("Fail, data:" + repr(data))
 
+
 class Encode():
 
     data_file = ""
@@ -119,10 +126,12 @@ class Encode():
     msg_length = 0
     total_payload = ""
     images_to_encode = []
+    output_dir = ""
 
-    def __init__(self, data_file, images_to_encode=None):
+    def __init__(self, data_file, images_to_encode=None, output_dir=None):
         self.data_file = data_file
-        self.images_to_encode =  images_to_encode or self.load_images()
+        self.output_dir = output_dir or "encoded/"
+        self.images_to_encode = images_to_encode or self.load_images()
 
     def load_images(self):
         usable_images = {}
@@ -136,7 +145,6 @@ class Encode():
                 usable_images[image] = width * height
 
         return usable_images
-
 
     def modify_pixels(self, image, data):
         im_open = Image.open(image)
@@ -153,9 +161,13 @@ class Encode():
                 if 0 <= iteration < len(data):
                     bits = data[iteration]
                 else:
+                    """
+                        Add noise to the rest of the image.
+                        Makes encoding a lot slower, but required for good obfsucation.
+                    """
                     bits = random.choice(["000", "001", "010", "011", "100", "101", "111", "110"])
 
-                if len(im[x,y]) == 3:
+                if len(im[x, y]) == 3:
                     r, g, b = im[x, y]
                 else:
                     r, g, b, _ = im[x, y]
@@ -174,8 +186,8 @@ class Encode():
 
     def encode(self):
 
-        with open (self.data_file, "r") as myfile:
-            self.msg=(myfile.read())
+        with open(self.data_file, "r") as myfile:
+            self.msg = (myfile.read())
 
         self.msg_hash = "{:08x}".format(binascii.crc32(self.msg) & 0xFFFFFFFF)
         self.msg_length = "{:08x}".format(len(self.msg))
@@ -203,7 +215,10 @@ class Encode():
                 data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) + self.total_bits[8:(17*8)] + data_left
                 data_left, im = self.modify_pixels(image, data_left)
 
-            im.save("encoded/" + "new_" + str(count) + ".png", lossless=True)
+            if not os.access(self.output_dir, os.W_OK):
+                os.mkdir(self.output_dir)
+
+            im.save(self.output_dir + "new_" + str(count) + ".png", lossless=True)
 
         if data_left:
             logging.critical("oppps, not enough images!")
