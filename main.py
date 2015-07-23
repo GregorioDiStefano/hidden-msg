@@ -134,9 +134,9 @@ class Encode():
         self.images_to_encode = images_to_encode or self.load_images()
 
     def load_images(self):
+        print "Loading images"
         usable_images = {}
         images = glob.glob("images/*")
-
         random.shuffle(images)
 
         for image in images:
@@ -207,21 +207,25 @@ class Encode():
         images_to_encode = self.images_to_encode
 
         bits = Utils.bytes_to_bits("{:01x}".format(0)) + self.total_bits[8:]
+
+        used_images = []
         for count, image in enumerate(images_to_encode):
             if count == 0:
                 data_left, im = self.modify_pixels(image, bits)
-
+                used_images.append(im)
             elif data_left:
                 data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) + self.total_bits[8:(17*8)] + data_left
                 data_left, im = self.modify_pixels(image, data_left)
-
-            if not os.access(self.output_dir, os.W_OK):
-                os.mkdir(self.output_dir)
-
-            im.save(self.output_dir + "new_" + str(count) + ".png", lossless=True)
+                used_images.append(im)
 
         if data_left:
             logging.critical("oppps, not enough images!")
+
+        if not os.access(self.output_dir, os.W_OK):
+            os.mkdir(self.output_dir)
+
+        for count, used_image in enumerate(used_images):
+                used_image.save(self.output_dir + "new_" + str(count) + ".png", lossless=True)
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "read":

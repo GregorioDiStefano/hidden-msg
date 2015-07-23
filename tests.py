@@ -2,6 +2,9 @@ import unittest
 import main
 import os
 import shutil
+import random
+import string
+import glob
 
 class Helpers(object):
 
@@ -11,14 +14,21 @@ class Helpers(object):
             return myfile.read()
 
     @staticmethod
-    def cleanup():
-        shutil.rmtree("encoded")
-        os.mkdir("encoded")
+    def cleanup(dir="encoded"):
+        try:
+            shutil.rmtree(dir)
+        except:
+            pass
+
+    @staticmethod
+    def random_dir():
+        dir = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+        return dir + '/'
 
 class MyTests(unittest.TestCase):
 
     def setUp(self):
-        pass
+        Helpers.cleanup()
 
     def test_lsb_1(self):
         self.assertEqual(0xFF, main.Utils.calculate_lsb(0xFE, 1))
@@ -35,7 +45,6 @@ class MyTests(unittest.TestCase):
         e.encode()
         d = main.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
-        Helpers.cleanup()
 
     def test_encode_decode_2(self):
         file_to_encode = "test/test-data-2.txt"
@@ -46,7 +55,6 @@ class MyTests(unittest.TestCase):
         e.encode()
         d = main.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
-        Helpers.cleanup()
 
     def test_encode_decode_3(self):
         file_to_encode = "test/test-data-3.txt"
@@ -57,7 +65,6 @@ class MyTests(unittest.TestCase):
         e.encode()
         d = main.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
-        Helpers.cleanup()
 
     def test_encode_decode_4_single_byte(self):
         file_to_encode = "test/test-data-4.txt"
@@ -68,7 +75,6 @@ class MyTests(unittest.TestCase):
         e.encode()
         d = main.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
-        Helpers.cleanup()
 
     def test_encode_decode_4_single_byte_small_image(self):
         file_to_encode = "test/test-data-4.txt"
@@ -79,7 +85,6 @@ class MyTests(unittest.TestCase):
         e.encode()
         d = main.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
-        Helpers.cleanup()
 
     def test_encode_decode_4_single_byte_huge_image(self):
         file_to_encode = "test/test-data-4.txt"
@@ -90,7 +95,6 @@ class MyTests(unittest.TestCase):
         e.encode()
         d = main.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
-        Helpers.cleanup()
 
     def test_encode_decode_5_huge_zeros(self):
         file_to_encode = "test/200kb_zero.txt"
@@ -101,8 +105,6 @@ class MyTests(unittest.TestCase):
         e.encode()
         d = main.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
-        Helpers.cleanup()
-
 
     def test_encode_decode_6_huge_random(self):
         file_to_encode = "test/1mb"
@@ -113,17 +115,28 @@ class MyTests(unittest.TestCase):
         e.encode()
         d = main.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
-        Helpers.cleanup()
 
     def test_encode_decode_7_specfic_dir(self):
         file_to_encode = "test/test-data-1.txt"
         data_to_encode =  Helpers.file_to_data(file_to_encode)
+        random_dir = Helpers.random_dir()
+
+        e = main.Encode(file_to_encode, output_dir = random_dir)
+        e.encode()
+        d = main.Decode(images_dir=random_dir)
+        self.assertEqual(d.get_data(), data_to_encode)
+        Helpers.cleanup(random_dir)
+
+    def test_encode_decode_limited_files(self):
+        file_to_encode = "test/test-data-4.txt"
+        data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test6/1.jpg", "test-images/test6/2.jpg", "test-images/test6/3.jpg"]
-        e = main.Encode(file_to_encode, encode_images, output_dir = "test-dir-1/")
+        e = main.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode(images_dir="test-dir-1/")
+        d = main.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
-        Helpers.cleanup()
+        self.assertTrue(len(glob.glob("encoded/*")) == 1)
+
 if __name__ == '__main__':
     unittest.main()
