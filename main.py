@@ -153,6 +153,7 @@ class Encode():
         max_x, max_y = im_open.size
         data = Utils.list_of_3(data)
 
+        random_bits = [bin(i)[2:].zfill(3) for i in range(8)]
         iteration = 0
 
         for x in xrange(0, max_x):
@@ -165,7 +166,7 @@ class Encode():
                         Add noise to the rest of the image.
                         Makes encoding a lot slower, but required for good obfsucation.
                     """
-                    bits = random.choice(["000", "001", "010", "011", "100", "101", "111", "110"])
+                    bits = random.choice(random_bits)
 
                 if len(im[x, y]) == 3:
                     r, g, b = im[x, y]
