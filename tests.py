@@ -1,5 +1,5 @@
 import unittest
-import main
+import hiddenmsg
 import os
 import shutil
 import random
@@ -31,19 +31,19 @@ class MyTests(unittest.TestCase):
         Helpers.cleanup()
 
     def test_lsb_1(self):
-        self.assertEqual(0xFF, main.Utils.calculate_lsb(0xFE, 1))
+        self.assertEqual(0xFF, hiddenmsg.Utils.calculate_lsb(0xFE, 1))
 
     def test_lsb_2(self):
-        self.assertEqual(0xFE, main.Utils.calculate_lsb(0xFE, 0))
+        self.assertEqual(0xFE, hiddenmsg.Utils.calculate_lsb(0xFE, 0))
 
     def test_encode_decode_1(self):
         file_to_encode = "test/test-data-1.txt"
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test1/64.png", "test-images/test1/64_1.png"]
-        e = main.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode()
+        d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
 
     def test_encode_decode_2(self):
@@ -51,9 +51,9 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/64.png", "test-images/test2/huge.png"]
-        e = main.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode()
+        d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
 
     def test_encode_decode_3(self):
@@ -61,9 +61,9 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/huge.png"]
-        e = main.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode()
+        d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
 
     def test_encode_decode_4_single_byte(self):
@@ -71,9 +71,9 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/huge.png"]
-        e = main.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode()
+        d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
 
     def test_encode_decode_4_single_byte_small_image(self):
@@ -81,9 +81,9 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/64.png"]
-        e = main.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode()
+        d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
 
     def test_encode_decode_4_single_byte_huge_image(self):
@@ -91,9 +91,9 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/huge.png"]
-        e = main.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode()
+        d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
 
     def test_encode_decode_5_huge_zeros(self):
@@ -101,9 +101,9 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/huge.png"]
-        e = main.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode()
+        d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
 
     def test_encode_decode_6_huge_random(self):
@@ -111,9 +111,9 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test6/1.jpg", "test-images/test6/2.jpg", "test-images/test6/3.jpg"]
-        e = main.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode()
+        d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
 
     def test_encode_decode_7_specfic_dir(self):
@@ -121,9 +121,9 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
         random_dir = Helpers.random_dir()
 
-        e = main.Encode(file_to_encode, output_dir = random_dir)
+        e = hiddenmsg.Encode(file_to_encode, output_dir = random_dir)
         e.encode()
-        d = main.Decode(images_dir=random_dir)
+        d = hiddenmsg.Decode(images_dir=random_dir)
         self.assertEqual(d.get_data(), data_to_encode)
         Helpers.cleanup(random_dir)
 
@@ -132,9 +132,9 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test6/1.jpg", "test-images/test6/2.jpg", "test-images/test6/3.jpg"]
-        e = main.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(file_to_encode, encode_images)
         e.encode()
-        d = main.Decode()
+        d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
         self.assertTrue(len(glob.glob("encoded/*")) == 1)
 
