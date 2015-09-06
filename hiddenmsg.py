@@ -7,6 +7,7 @@ import imghdr
 import random
 import os
 import string
+import base64
 
 logging.basicConfig(level=logging.CRITICAL,
                     format='%(asctime)s %(name)-6s %(levelname)-2s %(message)s'
@@ -130,8 +131,12 @@ class Encode():
     images_to_encode = []
     output_dir = ""
 
-    def __init__(self, data_file, images_to_encode=None, output_dir=None):
+    def __init__(self, data_file = None, base64_data = None, images_to_encode=None, output_dir=None):
+        if data_file and base64_data:
+            print "You cant specify two data sources!"
+
         self.data_file = data_file
+        self.data_base64 = base64_data
         self.output_dir = output_dir or "encoded/"
         self.images_to_encode = images_to_encode or self._load_images()
 
@@ -188,9 +193,11 @@ class Encode():
         return data_left, im_open
 
     def encode(self):
-
-        with open(self.data_file, "r") as myfile:
-            self.msg = (myfile.read())
+        if self.data_base64:
+            self.msg = base64.b64decode(self.data_base64)
+        else:
+            with open(self.data_file, "r") as myfile:
+                self.msg = (myfile.read())
 
         self.msg_hash = "{:08x}".format(binascii.crc32(self.msg) & 0xFFFFFFFF)
         self.msg_length = "{:08x}".format(len(self.msg))
@@ -238,11 +245,3 @@ class Encode():
 
         return files_used
 
-if __name__ == "__main__":
-    if len(sys.argv) == 2 and sys.argv[1] == "read":
-        decode = Decode()
-        print decode.get_data()
-        sys.exit(-1)
-    else:
-        a = Encode("data.txt")
-        a.encode()

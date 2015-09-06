@@ -5,6 +5,7 @@ import shutil
 import random
 import string
 import glob
+import base64
 
 class Helpers(object):
 
@@ -41,7 +42,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test1/64.png", "test-images/test1/64_1.png"]
-        e = hiddenmsg.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(data_file = file_to_encode, images_to_encode=encode_images)
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
@@ -51,7 +52,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/64.png", "test-images/test2/huge.png"]
-        e = hiddenmsg.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(data_file = file_to_encode, images_to_encode=encode_images)
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
@@ -61,7 +62,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/huge.png"]
-        e = hiddenmsg.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(data_file = file_to_encode, images_to_encode=encode_images)
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
@@ -71,7 +72,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/huge.png"]
-        e = hiddenmsg.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(data_file = file_to_encode, images_to_encode=encode_images)
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
@@ -81,7 +82,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/64.png"]
-        e = hiddenmsg.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(data_file = file_to_encode, images_to_encode=encode_images)
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
@@ -91,7 +92,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/huge.png"]
-        e = hiddenmsg.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(data_file = file_to_encode, images_to_encode=encode_images)
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
@@ -101,7 +102,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test2/huge.png"]
-        e = hiddenmsg.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(data_file = file_to_encode, images_to_encode=encode_images)
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
@@ -111,7 +112,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test6/1.jpg", "test-images/test6/2.jpg", "test-images/test6/3.jpg"]
-        e = hiddenmsg.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(data_file = file_to_encode, images_to_encode=encode_images)
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
@@ -121,7 +122,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
         random_dir = Helpers.random_dir()
 
-        e = hiddenmsg.Encode(file_to_encode, output_dir = random_dir)
+        e = hiddenmsg.Encode(data_file = file_to_encode, output_dir = random_dir)
         e.encode()
         d = hiddenmsg.Decode(images_dir=random_dir)
         self.assertEqual(d.get_data(), data_to_encode)
@@ -132,11 +133,20 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
 
         encode_images = ["test-images/test6/1.jpg", "test-images/test6/2.jpg", "test-images/test6/3.jpg"]
-        e = hiddenmsg.Encode(file_to_encode, encode_images)
+        e = hiddenmsg.Encode(data_file = file_to_encode, images_to_encode=encode_images)
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), data_to_encode)
         self.assertTrue(len(glob.glob("encoded/*")) == 1)
+
+    def test_encode_decode_base64_data(self):
+        input_base64 = "VGhpcyBpcyBhIHRlc3QgbWVzc2FnZQo="
+        expected_output = base64.b64decode(input_base64)
+
+        e = hiddenmsg.Encode(base64_data = input_base64)
+        e.encode()
+        d = hiddenmsg.Decode()
+        self.assertEqual(d.get_data(), expected_output)
 
 if __name__ == '__main__':
     unittest.main()
