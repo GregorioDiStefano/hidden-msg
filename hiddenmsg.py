@@ -6,6 +6,7 @@ import glob
 import imghdr
 import random
 import os
+import string
 
 logging.basicConfig(level=logging.CRITICAL,
                     format='%(asctime)s %(name)-6s %(levelname)-2s %(message)s'
@@ -49,20 +50,20 @@ class Decode():
 
     def __init__(self, images_to_decode=None, images_dir=None):
         if images_dir:
-            self.images_to_decode = self.find_encoded_images(images_dir + "*")
+            self.images_to_decode = self._find_encoded_images(images_dir + "*")
         else:
-            self.images_to_decode = images_to_decode or self.find_encoded_images("encoded/*")
+            self.images_to_decode = images_to_decode or self._find_encoded_images("encoded/*")
 
-    def find_encoded_images(self, dir):
+    def _find_encoded_images(self, dir):
             files = {}
             for encoded_image in glob.glob(dir):
-                    part, length, crc = self.read_pixels(encoded_image, only_meta=True)
+                    part, length, crc = self._read_pixels(encoded_image, only_meta=True)
                     if not files.get(crc, False):
                         files[crc] = []
                     files[crc].append({"file": encoded_image, "part": part, "length": length})
             return files
 
-    def read_pixels(self, image, only_meta=False):
+    def _read_pixels(self, image, only_meta=False):
         im_open = Image.open(image)
         im = im_open.load()
         max_x, max_y = im_open.size
@@ -109,13 +110,14 @@ class Decode():
             sorted_by_part = sorted(self.images_to_decode[key], key=lambda k: k['part'])
             length = self.images_to_decode[key][0]["length"]
             for f in sorted_by_part:
-                payload, _, _ = self.read_pixels(f["file"])
+                payload, _, _ = self._read_pixels(f["file"])
                 data += payload
         data = (data[0:length])
         if hex(binascii.crc32(data) & 0xFFFFFFFF) == hex(key):
             return data
         else:
             sys.stdout.write("Fail, data:" + repr(data))
+            return False
 
 
 class Encode():
@@ -131,9 +133,9 @@ class Encode():
     def __init__(self, data_file, images_to_encode=None, output_dir=None):
         self.data_file = data_file
         self.output_dir = output_dir or "encoded/"
-        self.images_to_encode = images_to_encode or self.load_images()
+        self.images_to_encode = images_to_encode or self._load_images()
 
-    def load_images(self):
+    def _load_images(self):
         print "Loading images"
         usable_images = {}
         images = glob.glob("images/*")
@@ -146,7 +148,7 @@ class Encode():
 
         return usable_images
 
-    def modify_pixels(self, image, data):
+    def _modify_pixels(self, image, data):
         im_open = Image.open(image)
         im = im_open.load()
 
@@ -212,11 +214,11 @@ class Encode():
         used_images = []
         for count, image in enumerate(images_to_encode):
             if count == 0:
-                data_left, im = self.modify_pixels(image, bits)
+                data_left, im = self._modify_pixels(image, bits)
                 used_images.append(im)
             elif data_left:
                 data_left = Utils.bytes_to_bits("{:01x}".format(count + 1)) + self.total_bits[8:(17*8)] + data_left
-                data_left, im = self.modify_pixels(image, data_left)
+                data_left, im = self._modify_pixels(image, data_left)
                 used_images.append(im)
 
         if data_left:
@@ -225,8 +227,16 @@ class Encode():
         if not os.access(self.output_dir, os.W_OK):
             os.mkdir(self.output_dir)
 
+
+        random_fn = ''.join(random.choice(string.lowercase) for i in range(8)) + "_"
+        files_used = []
+
         for count, used_image in enumerate(used_images):
-                used_image.save(self.output_dir + "new_" + str(count) + ".png", lossless=True)
+                filename = random_fn + str(count) + ".png"
+                used_image.save(self.output_dir + filename, lossless=True)
+                files_used.append(filename)
+
+        return files_used
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "read":
