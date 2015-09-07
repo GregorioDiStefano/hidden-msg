@@ -8,6 +8,7 @@ import random
 import os
 import string
 import base64
+from PIL import Image
 
 logging.basicConfig(level=logging.CRITICAL,
                     format='%(asctime)s %(name)-6s %(levelname)-2s %(message)s'
@@ -43,6 +44,27 @@ class Utils(object):
         n = 3
         return [s[i:i+n] for i in range(0, len(s), n)]
 
+    """
+        Optimize the image size in relation to the payload size
+    """
+    @staticmethod
+    def resize_image_to_datasize(image, tbytes):
+        w, h = image.size
+
+        if ((w * h) / 3) < tbytes:
+            return image
+
+        for i in range(100, 20, -1):
+            percentage = float(i/100.00)
+            new_w = int(w * percentage)
+            new_h = int(h * percentage)
+            new_pixels = new_w * new_h
+            bytes_that_fit = int(new_pixels / 3)
+
+            if bytes_that_fit < tbytes:
+                #print "Image too small for required bytes, adjusting 5per up"
+                return image.resize((int(new_w * 1.01), int(new_h * 1.01)), Image.ANTIALIAS)
+        return image.resize((new_w, new_h), Image.ANTIALIAS)
 
 class Decode():
 
@@ -141,7 +163,6 @@ class Encode():
         self.images_to_encode = images_to_encode or self._load_images()
 
     def _load_images(self):
-        print "Loading images"
         usable_images = {}
         images = glob.glob("images/*")
         random.shuffle(images)
@@ -154,10 +175,13 @@ class Encode():
         return usable_images
 
     def _modify_pixels(self, image, data):
-        im_open = Image.open(image)
+        im_open = Utils.resize_image_to_datasize(Image.open(image), len(data)/8)
+
         im = im_open.load()
 
         max_x, max_y = im_open.size
+
+
         data = Utils.list_of_3(data)
 
         random_bits = [bin(i)[2:].zfill(3) for i in range(8)]

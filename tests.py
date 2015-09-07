@@ -1,6 +1,5 @@
 import unittest
 import hiddenmsg
-import os
 import shutil
 import random
 import string
@@ -122,7 +121,7 @@ class MyTests(unittest.TestCase):
         data_to_encode =  Helpers.file_to_data(file_to_encode)
         random_dir = Helpers.random_dir()
 
-        e = hiddenmsg.Encode(data_file = file_to_encode, output_dir = random_dir)
+        e = hiddenmsg.Encode(data_file=file_to_encode, output_dir=random_dir)
         e.encode()
         d = hiddenmsg.Decode(images_dir=random_dir)
         self.assertEqual(d.get_data(), data_to_encode)
