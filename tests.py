@@ -5,6 +5,7 @@ import random
 import string
 import glob
 import base64
+from PIL import Image
 
 class Helpers(object):
 
@@ -146,6 +147,18 @@ class MyTests(unittest.TestCase):
         e.encode()
         d = hiddenmsg.Decode()
         self.assertEqual(d.get_data(), expected_output)
+
+    def test_no_resize(self):
+        encode_image = "test-images/test1/64.png"
+        original_image = Image.open(encode_image)
+        new_img = hiddenmsg.Utils.resize_image_to_datasize(original_image, 8*8)
+        self.assertEqual(original_image, new_img)
+
+    def test_resize(self):
+        encode_image = "test-images/test6/1.jpg"
+        original_image = Image.open(encode_image)
+        new_img = hiddenmsg.Utils.resize_image_to_datasize(original_image, 8*8)
+        self.assertNotEqual(original_image, new_img)
 
 if __name__ == '__main__':
     unittest.main()
