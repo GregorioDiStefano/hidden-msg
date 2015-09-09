@@ -1,5 +1,5 @@
 # HiddenMsg
-Hide data in PNG images by flipping the LSB values in each pixels RGB value.
+Steganography in lossless images
 
 # Explaination
 Alice and Bob would like to talk in a secure manner (think pgp) over an insecure channel, but, they also dont want to attract the attention of nosey Carol.
