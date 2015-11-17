@@ -11,8 +11,7 @@ import base64
 from PIL import Image
 
 logging.basicConfig(level=logging.CRITICAL,
-                    format='%(asctime)s %(name)-6s %(levelname)-2s %(message)s'
-                   )
+                    format='%(asctime)s %(name)-6s %(levelname)-2s %(message)s')
 
 
 class Utils(object):
